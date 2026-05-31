@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { auth, db } from '../../lib/firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { collection, getDocs, doc, getDoc, setDoc } from 'firebase/firestore'
+import { collection, getDocs, doc, getDoc, setDoc, query, where, onSnapshot } from 'firebase/firestore'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [filtered, setFiltered] = useState<any[]>([])
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState('Everyone')
+  const [unread, setUnread] = useState(0)
 
   const filters = ['Everyone', 'Near me', 'Women', 'Men', 'Relationship', 'Friendship', 'Pen pal']
 
@@ -30,13 +31,19 @@ export default function Dashboard() {
       const all = snap.docs.map(d => d.data()).filter(d => d.uid !== u.uid)
       setMembers(all)
       setFiltered(all)
+
+      const nq = query(
+        collection(db, 'notifications'),
+        where('toUid', '==', u.uid),
+        where('read', '==', false)
+      )
+      onSnapshot(nq, snap => setUnread(snap.docs.length))
     })
     return () => unsub()
   }, [])
 
   useEffect(() => {
     let result = [...members]
-
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter(m =>
@@ -45,14 +52,12 @@ export default function Dashboard() {
         m.interests?.some((i: string) => i.toLowerCase().includes(q))
       )
     }
-
     if (activeFilter === 'Women') result = result.filter(m => m.gender === 'Woman')
     else if (activeFilter === 'Men') result = result.filter(m => m.gender === 'Man')
     else if (activeFilter === 'Near me') result = result.filter(m => m.city === profile?.city)
     else if (activeFilter === 'Relationship') result = result.filter(m => m.looking === 'A relationship')
     else if (activeFilter === 'Friendship') result = result.filter(m => m.looking === 'Friendship')
     else if (activeFilter === 'Pen pal') result = result.filter(m => m.looking === 'Pen pal')
-
     setFiltered(result)
   }, [search, activeFilter, members])
 
@@ -90,6 +95,16 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={() => router.push('/notifications')}
+            className="relative text-slate-400 text-sm border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5">
+            🔔
+            {unread > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-orange-600 rounded-full text-xs flex items-center justify-center text-white">
+                {unread}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => router.push('/messages')}
             className="text-slate-400 text-sm border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5">
             ✉ Messages
@@ -112,7 +127,6 @@ export default function Dashboard() {
 
       <div className="max-w-2xl mx-auto px-4 py-6">
 
-        {/* Greeting */}
         <p className="text-xl font-medium mb-1">
           {getHour()}, <span className="text-orange-400">{profile?.fname}</span> 👋
         </p>
@@ -120,7 +134,6 @@ export default function Dashboard() {
           {filtered.length} {filtered.length === 1 ? 'person' : 'people'} match your interests today
         </p>
 
-        {/* Search */}
         <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 mb-5">
           <span className="text-slate-500">🔍</span>
           <input
@@ -132,7 +145,6 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Filters */}
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
           {filters.map(f => (
             <button
@@ -149,7 +161,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Featured match */}
         {featured && (
           <>
             <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">Featured match</p>
@@ -166,10 +177,7 @@ export default function Dashboard() {
                 }
               </div>
               <div className="p-5 flex flex-col justify-between flex-1">
-                <div
-                  onClick={() => router.push(`/profile/${featured.uid}`)}
-                  className="cursor-pointer"
-                >
+                <div onClick={() => router.push(`/profile/${featured.uid}`)} className="cursor-pointer">
                   <span className="inline-block bg-orange-500/10 text-orange-400 text-xs px-3 py-1 rounded-full border border-orange-500/20 mb-2">
                     ⭐ Top match for you
                   </span>
@@ -185,14 +193,12 @@ export default function Dashboard() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => router.push(`/profile/${featured.uid}`)}
-                    className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium px-4 py-2 rounded-xl transition-all flex items-center gap-1"
-                  >
+                    className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium px-4 py-2 rounded-xl transition-all">
                     ✉ Send letter
                   </button>
                   <button
                     onClick={() => router.push(`/profile/${featured.uid}`)}
-                    className="bg-white/5 border border-white/10 text-slate-400 text-xs px-3 py-2 rounded-xl hover:bg-white/10"
-                  >
+                    className="bg-white/5 border border-white/10 text-slate-400 text-xs px-3 py-2 rounded-xl hover:bg-white/10">
                     ♡
                   </button>
                 </div>
@@ -201,7 +207,6 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* Member grid */}
         {rest.length > 0 && (
           <>
             <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">Browse members</p>
@@ -242,7 +247,6 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* Empty state */}
         {filtered.length === 0 && (
           <div className="text-center py-16">
             <p className="text-4xl mb-3">✉</p>
@@ -250,7 +254,6 @@ export default function Dashboard() {
             <p className="text-slate-600 text-sm mt-1">Try a different search or filter</p>
           </div>
         )}
-
       </div>
     </div>
   )

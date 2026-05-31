@@ -14,7 +14,6 @@ export default function Messages() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
   const [threads, setThreads] = useState<any[]>([])
   const [activeThread, setActiveThread] = useState<any>(null)
   const [messages, setMessages] = useState<any[]>([])
@@ -27,7 +26,6 @@ export default function Messages() {
       setCurrentUser(u)
       const snap = await getDoc(doc(db, 'users', u.uid))
       if (!snap.exists()) { router.push('/setup'); return }
-      setProfile(snap.data())
       loadThreads(u.uid)
     })
     return () => unsub()
@@ -85,21 +83,25 @@ export default function Messages() {
   return (
     <div className="min-h-screen bg-[#080c14] text-white flex flex-col">
 
-      {/* Topbar */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-orange-600 rounded-xl flex items-center justify-center text-sm">✉</div>
           <span className="font-medium">MailConnector</span>
         </div>
-        <button onClick={() => router.push('/dashboard')}
-          className="text-slate-400 text-sm border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5">
-          ← Dashboard
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => router.push('/notifications')}
+            className="text-slate-400 text-sm border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5">
+            🔔
+          </button>
+          <button onClick={() => router.push('/dashboard')}
+            className="text-slate-400 text-sm border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5">
+            ← Dashboard
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 max-w-4xl mx-auto w-full">
 
-        {/* Thread list */}
         <div className="w-64 border-r border-white/5 flex flex-col">
           <div className="p-4 border-b border-white/5">
             <p className="text-sm font-medium mb-3">Messages</p>
@@ -132,7 +134,6 @@ export default function Messages() {
           </div>
         </div>
 
-        {/* Chat area */}
         {activeThread ? (
           <div className="flex-1 flex flex-col">
             <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
@@ -147,7 +148,7 @@ export default function Messages() {
 
             <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 min-h-0" style={{ maxHeight: 'calc(100vh - 220px)' }}>
               {messages.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-2 py-16">
+                <div className="flex flex-col items-center justify-center gap-2 py-16">
                   <p className="text-3xl">✉</p>
                   <p className="text-slate-400 text-sm">Start the conversation!</p>
                   <p className="text-slate-600 text-xs">Write your first letter below</p>

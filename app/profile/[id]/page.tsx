@@ -4,10 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { auth, db } from '../../../lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
-import {
-  doc, getDoc, setDoc, deleteDoc, collection,
-  query, where, getDocs
-} from 'firebase/firestore'
+import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore'
 
 export default function ProfileView() {
   const router = useRouter()
@@ -23,11 +20,9 @@ export default function ProfileView() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) { router.push('/'); return }
       setCurrentUser(u)
-
       const memberSnap = await getDoc(doc(db, 'users', id))
       if (!memberSnap.exists()) { router.push('/dashboard'); return }
       setMember(memberSnap.data())
-
       const likeSnap = await getDoc(doc(db, 'likes', `${u.uid}_${id}`))
       setLiked(likeSnap.exists())
       setLoading(false)
@@ -87,21 +82,25 @@ export default function ProfileView() {
   return (
     <div className="min-h-screen bg-[#080c14] text-white">
 
-      {/* Topbar */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-orange-600 rounded-xl flex items-center justify-center text-sm">✉</div>
           <span className="font-medium">MailConnector</span>
         </div>
-        <button onClick={() => router.push('/dashboard')}
-          className="flex items-center gap-2 text-slate-400 text-sm border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5">
-          ← Back to browse
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => router.push('/notifications')}
+            className="text-slate-400 text-sm border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5">
+            🔔
+          </button>
+          <button onClick={() => router.push('/dashboard')}
+            className="text-slate-400 text-sm border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5">
+            ← Back to browse
+          </button>
+        </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-8">
 
-        {/* Profile header */}
         <div className="flex gap-5 mb-6">
           <div className="w-24 h-24 rounded-2xl bg-slate-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
             {member?.photoURL
@@ -134,34 +133,27 @@ export default function ProfileView() {
                 {liked ? '❤️' : '♡'}
               </button>
               <button onClick={startConversation}
-                className="bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-5 py-2 rounded-xl transition-all flex items-center gap-2">
+                className="bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-5 py-2 rounded-xl transition-all">
                 ✉ Send letter
               </button>
             </div>
           </div>
         </div>
 
-        {/* About */}
         <div className="bg-[#111827] border border-white/7 rounded-2xl p-5 mb-3">
           <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">About</p>
-          <p className="text-sm text-slate-400 leading-relaxed">
-            {member?.bio || 'No bio yet.'}
-          </p>
+          <p className="text-sm text-slate-400 leading-relaxed">{member?.bio || 'No bio yet.'}</p>
         </div>
 
-        {/* Interests */}
         <div className="bg-[#111827] border border-white/7 rounded-2xl p-5 mb-3">
           <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">Interests</p>
           <div className="flex flex-wrap gap-2">
             {member?.interests?.map((tag: string) => (
-              <span key={tag} className="bg-white/5 text-slate-400 text-xs px-3 py-1.5 rounded-full">
-                {tag}
-              </span>
+              <span key={tag} className="bg-white/5 text-slate-400 text-xs px-3 py-1.5 rounded-full">{tag}</span>
             ))}
           </div>
         </div>
 
-        {/* Details */}
         <div className="bg-[#111827] border border-white/7 rounded-2xl p-5">
           <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">Details</p>
           <div className="grid grid-cols-2 gap-4">
