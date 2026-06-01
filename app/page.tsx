@@ -16,21 +16,32 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const login = async () => {
-    if (loading) return
-    setLoading(true)
-    const provider = new GoogleAuthProvider()
-    try {
-      await signInWithPopup(auth, provider)
-      router.push('/setup')
-    } catch (error: any) {
-      if (error.code !== 'auth/cancelled-popup-request') {
-        alert('Login failed. Please try again.')
-      }
-    } finally {
-      setLoading(false)
+ const login = async () => {
+  if (loading) return
+  setLoading(true)
+  const provider = new GoogleAuthProvider()
+  try {
+    const result = await signInWithPopup(auth, provider)
+    const user = result.user
+
+    // Check if profile already exists
+    const { doc, getDoc } = await import('firebase/firestore')
+    const { db } = await import('../lib/firebase')
+    const profileSnap = await getDoc(doc(db, 'users', user.uid))
+
+    if (profileSnap.exists()) {
+      router.push('/dashboard') // already has profile → go to dashboard
+    } else {
+      router.push('/setup') // new user → go to setup
     }
+  } catch (error: any) {
+    if (error.code !== 'auth/cancelled-popup-request') {
+      alert('Login failed. Please try again.')
+    }
+  } finally {
+    setLoading(false)
   }
+}
 
   const members = [
     { name: 'Amara', age: 26, city: 'Cape Town', looking: 'Relationship', tags: ['Travel', 'Art', 'Music'], emoji: '🌸', bg: 'from-violet-900 to-purple-950' },
