@@ -3,45 +3,64 @@
 import { useState, useEffect } from 'react'
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../lib/firebase'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+
+const isUnsupportedBrowser = () => {
+  if (typeof window === 'undefined') return false
+  const ua = navigator.userAgent || navigator.vendor
+  return (
+    /FBAN|FBAV/i.test(ua) ||
+    /Instagram/i.test(ua) ||
+    /Messenger/i.test(ua) ||
+    /Line/i.test(ua) ||
+    /TikTok/i.test(ua) ||
+    /wv/i.test(ua)
+  )
+}
 
 export default function Home() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [inAppBrowser, setInAppBrowser] = useState(false)
 
   useEffect(() => {
+    setInAppBrowser(isUnsupportedBrowser())
     const handleScroll = () => setScrolled(window.scrollY > 40)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
- const login = async () => {
-  if (loading) return
-  setLoading(true)
-  const provider = new GoogleAuthProvider()
-  try {
-    const result = await signInWithPopup(auth, provider)
-    const user = result.user
-
-    // Check if profile already exists
-    const { doc, getDoc } = await import('firebase/firestore')
-    const { db } = await import('../lib/firebase')
-    const profileSnap = await getDoc(doc(db, 'users', user.uid))
-
-    if (profileSnap.exists()) {
-      router.push('/dashboard') // already has profile → go to dashboard
-    } else {
-      router.push('/setup') // new user → go to setup
+  const login = async () => {
+    if (isUnsupportedBrowser()) {
+      alert(
+        'Google Login cannot be used inside Facebook, Instagram, Messenger or other in-app browsers. Please tap the menu and open this website in Chrome or Safari.'
+      )
+      return
     }
-  } catch (error: any) {
-    if (error.code !== 'auth/cancelled-popup-request') {
-      alert('Login failed. Please try again.')
+    if (loading) return
+    setLoading(true)
+    const provider = new GoogleAuthProvider()
+    try {
+      const result = await signInWithPopup(auth, provider)
+      const user = result.user
+      const profileSnap = await getDoc(doc(db, 'users', user.uid))
+      if (profileSnap.exists()) {
+        router.push('/dashboard')
+      } else {
+        router.push('/setup')
+      }
+    } catch (error: any) {
+      if (error.code !== 'auth/cancelled-popup-request') {
+        alert('Login failed. Please try again.')
+      }
+    } finally {
+      setLoading(false)
     }
-  } finally {
-    setLoading(false)
   }
-}
 
   const members = [
     { name: 'Amara', age: 26, city: 'Cape Town', looking: 'Relationship', tags: ['Travel', 'Art', 'Music'], emoji: '🌸', bg: 'from-violet-900 to-purple-950' },
@@ -82,15 +101,37 @@ export default function Home() {
         .member-2 { animation: fadeUp 0.6s ease 0.45s both; }
         .member-3 { animation: fadeUp 0.6s ease 0.6s both; }
         .serif { font-family: 'DM Serif Display', serif; }
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #070b12; } ::-webkit-scrollbar-thumb { background: #f97316; border-radius: 3px; }
       `}</style>
+
+      {/* In-app browser warning */}
+      {inAppBrowser && (
+        <div className="max-w-4xl mx-auto px-6 pt-4">
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl text-center">
+            <p>⚠️ You're using an in-app browser.</p>
+            <p className="text-sm mt-1">Open this website in Chrome or Safari to use Google Sign In.</p>
+            <button
+              onClick={() => window.open(window.location.href, '_blank')}
+              className="mt-3 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-xl text-sm font-medium transition-all"
+            >
+              Open in Browser
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Sticky Nav */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'nav-glass' : ''}`}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold" style={{ background: 'linear-gradient(135deg, #f97316, #fbbf24)' }}>✉</div>
-            <span className="font-semibold text-base tracking-tight">MailConnector</span>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="MailConnector"
+              width={36}
+              height={36}
+              className="rounded-xl"
+              onError={(e: any) => { e.target.style.display = 'none' }}
+            />
+            <span className="font-bold text-base tracking-tight">MailConnector</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             {['How it works', 'Browse', 'Success stories'].map(l => (
@@ -220,9 +261,7 @@ export default function Home() {
 
       {/* CTA */}
       <section className="py-24 px-6 text-center relative overflow-hidden" style={{ background: 'rgba(249,115,22,0.04)', borderTop: '0.5px solid rgba(249,115,22,0.1)' }}>
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 opacity-5" style={{ background: 'radial-gradient(circle at 50% 50%, #f97316, transparent 70%)' }} />
-        </div>
+        <div className="absolute inset-0 pointer-events-none opacity-5" style={{ background: 'radial-gradient(circle at 50% 50%, #f97316, transparent 70%)' }} />
         <div className="max-w-xl mx-auto relative">
           <p className="serif text-4xl md:text-5xl mb-4">Ready to write<br /><span className="grad-text italic">your story?</span></p>
           <p className="text-slate-400 text-sm mb-10 leading-relaxed">Join thousands of South Africans finding real connections through meaningful letters</p>
