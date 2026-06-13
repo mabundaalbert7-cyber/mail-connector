@@ -2,23 +2,35 @@
 
 import { useState, useEffect } from 'react'
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { auth, db } from '../lib/firebase'
 import { doc, getDoc } from 'firebase/firestore'
-import { db } from '../lib/firebase'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
 const isUnsupportedBrowser = () => {
   if (typeof window === 'undefined') return false
-  const ua = navigator.userAgent || navigator.vendor
+  const ua = navigator.userAgent || navigator.vendor || ''
   return (
     /FBAN|FBAV/i.test(ua) ||
     /Instagram/i.test(ua) ||
     /Messenger/i.test(ua) ||
     /Line/i.test(ua) ||
     /TikTok/i.test(ua) ||
-    /wv/i.test(ua)
+    /wv/i.test(ua) ||
+    /\bFB\b/i.test(ua) ||
+    /FBIOS/i.test(ua) ||
+    /FB_IAB/i.test(ua)
   )
+}
+
+const openInBrowser = () => {
+  const url = window.location.href
+  if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    window.location.href = url.replace('https://', 'safari-web+app://')
+    setTimeout(() => { window.location.href = url }, 500)
+  } else {
+    window.location.href = `intent://${url.replace('https://', '')}#Intent;scheme=https;package=com.android.chrome;end`
+  }
 }
 
 export default function Home() {
@@ -36,9 +48,7 @@ export default function Home() {
 
   const login = async () => {
     if (isUnsupportedBrowser()) {
-      alert(
-        'Google Login cannot be used inside Facebook, Instagram, Messenger or other in-app browsers. Please tap the menu and open this website in Chrome or Safari.'
-      )
+      alert('Google Login cannot be used inside Facebook, Instagram or other in-app browsers. Please open this website in Chrome or Safari.')
       return
     }
     if (loading) return
@@ -79,6 +89,42 @@ export default function Home() {
     { text: "MailConnector brought back the romance of getting to know someone. No games, just real conversations.", name: 'Sipho K.', city: 'Johannesburg', initials: 'SK', color: 'bg-amber-600' },
   ]
 
+  // Show full screen warning for in-app browsers
+  if (inAppBrowser) {
+    return (
+      <div style={{ background: '#070b12', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+        <div style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', width: '80px', height: '80px', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', marginBottom: '24px' }}>
+          ✉
+        </div>
+        <h1 style={{ color: 'white', fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>
+          MailConnector
+        </h1>
+        <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '32px' }}>
+          Real connections through meaningful letters
+        </p>
+        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '20px', padding: '24px', marginBottom: '24px', maxWidth: '360px', width: '100%' }}>
+          <p style={{ color: '#f87171', fontSize: '16px', fontWeight: '700', marginBottom: '10px' }}>
+            ⚠️ In-App Browser Detected
+          </p>
+          <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.7' }}>
+            Google Sign In doesn't work inside <strong style={{ color: '#cbd5e1' }}>Facebook</strong> or <strong style={{ color: '#cbd5e1' }}>Instagram</strong>. You need to open this page in Chrome or Safari.
+          </p>
+        </div>
+        <button
+          onClick={openInBrowser}
+          style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', color: 'white', border: 'none', borderRadius: '16px', padding: '16px 32px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', marginBottom: '20px', width: '100%', maxWidth: '360px', boxShadow: '0 0 32px rgba(249,115,22,0.4)' }}
+        >
+          🌐 Open in Browser
+        </button>
+        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '16px', maxWidth: '360px', width: '100%' }}>
+          <p style={{ color: '#64748b', fontSize: '13px', lineHeight: '1.7' }}>
+            Or tap the <strong style={{ color: '#94a3b8' }}>three dots ⋮</strong> in the top right corner of Facebook/Instagram and select <strong style={{ color: '#94a3b8' }}>"Open in Chrome"</strong> or <strong style={{ color: '#94a3b8' }}>"Open in Safari"</strong>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen text-white" style={{ background: '#070b12', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <style>{`
@@ -103,34 +149,11 @@ export default function Home() {
         .serif { font-family: 'DM Serif Display', serif; }
       `}</style>
 
-      {/* In-app browser warning */}
-      {inAppBrowser && (
-        <div className="max-w-4xl mx-auto px-6 pt-4">
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl text-center">
-            <p>⚠️ You're using an in-app browser.</p>
-            <p className="text-sm mt-1">Open this website in Chrome or Safari to use Google Sign In.</p>
-            <button
-              onClick={() => window.open(window.location.href, '_blank')}
-              className="mt-3 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-xl text-sm font-medium transition-all"
-            >
-              Open in Browser
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Sticky Nav */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'nav-glass' : ''}`}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Image
-              src="/logo.png"
-              alt="MailConnector"
-              width={36}
-              height={36}
-              className="rounded-xl"
-              onError={(e: any) => { e.target.style.display = 'none' }}
-            />
+            <Image src="/logo.png" alt="MailConnector" width={36} height={36} className="rounded-xl" />
             <span className="font-bold text-base tracking-tight">MailConnector</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
@@ -224,9 +247,7 @@ export default function Home() {
             {steps.map((s, i) => (
               <div key={i} className="text-center">
                 <div className="relative inline-block mb-6">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto glass-warm">
-                    {s.icon}
-                  </div>
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto glass-warm">{s.icon}</div>
                   <span className="absolute -top-2 -right-2 text-xs font-bold text-orange-400 serif">{s.num}</span>
                 </div>
                 <h3 className="font-semibold text-base mb-2">{s.title}</h3>
