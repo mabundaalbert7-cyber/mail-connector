@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { auth, db, storage } from '../../lib/firebase'
-import { doc, setDoc } from 'firebase/firestore'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { onAuthStateChanged } from 'firebase/auth'
 
@@ -32,9 +32,24 @@ export default function Setup() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      if (!u) router.push('/')
-      else setUser(u)
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      if (!u) { router.push('/'); return }
+      setUser(u)
+
+      // Load existing profile data if it exists
+      const profileSnap = await getDoc(doc(db, 'users', u.uid))
+      if (profileSnap.exists()) {
+        const data = profileSnap.data()
+        setFname(data.fname || '')
+        setLname(data.lname || '')
+        setAge(data.age?.toString() || '')
+        setGender(data.gender || '')
+        setCity(data.city || '')
+        setLooking(data.looking || '')
+        setBio(data.bio || '')
+        setSelected(data.interests || [])
+        setPhotoPreview(data.photoURL || '')
+      }
     })
     return () => unsub()
   }, [])
@@ -67,7 +82,7 @@ export default function Setup() {
     if (!user || progress < 80) return
     setSaving(true)
     try {
-      let photoURL = ''
+      let photoURL = photoPreview // keep existing photo by default
       if (photoFile) {
         const storageRef = ref(storage, `avatars/${user.uid}`)
         await uploadBytes(storageRef, photoFile)
@@ -111,10 +126,7 @@ export default function Setup() {
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-orange-500 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-full bg-orange-500 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
